@@ -82,7 +82,7 @@ def write_to_csv(pair_name, new_price, difference):
     print(f"Запись в CSV для {pair_name}: {new_price}, разница: {difference}")
     with open('prices.csv', mode='a') as file:
         writer = csv.writer(file)
-        writer.writerow([pair_name, new_price, datetime.now().isoformat(), difference])
+        writer.writerow([f"Название: {pair_name}, Цена: {new_price}, Время: {datetime.now().isoformat()}, Разница: {difference}"])
 
 
 async def record_price_change(pair_name, new_price, difference):
@@ -104,5 +104,3 @@ async def record_price_change(pair_name, new_price, difference):
             print(f"Валютная пара {pair_name} не найдена в базе данных.")
     except Exception as e:
         print(f"Ошибка при записи в базу данных: {e}")
-
-
