@@ -1,6 +1,7 @@
 import csv
 
 from selenium import webdriver
+from selenium.common import StaleElementReferenceException
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -41,22 +42,53 @@ def monitor_price(driver, url, search_key):
 
         # Ожидание загрузки карточки товара
         print("Ожидание загрузки карточки товара...")
-        product = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'article.product-card'))
+        product_list = WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'article.product-card'))
         )
+        retries = 3  # Количество повторных попыток в случае ошибки
+        found = False  # Флаг для отслеживания, был ли найден релевантный товар
+        while retries > 0 and not found:  # Добавляем проверку, чтобы цикл завершался после нахождения товара
+            try:
+                product_list = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'article.product-card'))
+                )
 
-        # Скролл к продукту для уверенности, что элемент виден
-        driver.execute_script("arguments[0].scrollIntoView();", product)
+                # Перебираем товары до тех пор, пока не найдем релевантный
+                for product in product_list:
+                    # Скролл к продукту для уверенности, что элемент виден
+                    driver.execute_script("arguments[0].scrollIntoView();", product)
 
-        # Извлечение данных
-        product_name = product.find_element(By.CSS_SELECTOR, '.product-card__link').get_attribute('aria-label').strip()
-        try:
-            product_price = product.find_element(By.CSS_SELECTOR, '.price__lower-price').text.strip()
-        except:
-            product_price = product.find_element(By.CSS_SELECTOR, '.product-card__price').text.strip()
-        # print("HTML карточки продукта:", product.get_attribute('outerHTML'))
-        return {'name': product_name, 'price': product_price}
+                    # Извлечение названия товара из атрибута aria-label
+                    product_name = product.find_element(By.CSS_SELECTOR, '.product-card__link').get_attribute(
+                        'aria-label').strip()
 
+                    # Проверка релевантности товара
+                    if search_key.lower() in product_name.lower():
+                        if not found:  # Если товар еще не был найден
+                            # Извлечение цены товара
+                            try:
+                                product_price = product.find_element(By.CSS_SELECTOR,
+                                                                     '.price__lower-price').text.strip()
+                            except:
+                                product_price = product.find_element(By.CSS_SELECTOR,
+                                                                     '.product-card__price').text.strip()
+
+                            print(f"Товар найден: {product_name}, Цена: {product_price}")
+                            found = True  # Устанавливаем флаг, что товар найден
+                            break  # Прерываем цикл после нахождения первого релевантного товара
+
+                    else:
+                        print(f"Найден нерелевантный товар: {product_name}")
+
+                if not found:
+                    print("Релевантных товаров не найдено")
+                    return {'name': None, 'price': None}
+
+            except StaleElementReferenceException:
+                print("Элемент устарел, повторная попытка...")
+                retries -= 1
+                if retries == 0:
+                    raise Exception("Не удалось получить актуальные элементы страницы после нескольких попыток.")
     except Exception as e:
         print(f"Ошибка при получении данных: {e}")
         return None
@@ -74,7 +106,7 @@ def save_to_csv(data, filename='market_data.csv'):
 
 def main():
     url = 'https://www.wildberries.ru/'
-    search_key = 'леска для спиннинга'
+    search_key = 'дуршлаг'
 
     # Настройка драйвера
     driver = setup_driver()
