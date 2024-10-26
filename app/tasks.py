@@ -12,8 +12,8 @@ from app.utils import fetch_price_from_binance
 async def send_email(subject, body):
     smtp_host = 'smtp.gmail.com'
     smtp_port = 587
-    smtp_user = 'Ru.Zubayr@gmail.com'  # Замени на свой email
-    smtp_password = 'izib cjtk kdjt owbo'  # Замени на свой пароль
+    smtp_user = 'Ru.Zubayr@gmail.com'
+    smtp_password = 'izib cjtk kdjt owbo'
 
     msg = EmailMessage()
     msg['From'] = smtp_user
